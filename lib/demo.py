@@ -2,7 +2,6 @@ import pandas as pd
 import datetime
 import numpy as np
 import akshare as ak
-import tushare as ts
 from matplotlib import pyplot as plt
 from urllib.parse import urlencode
 import stock

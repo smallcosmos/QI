@@ -31,14 +31,12 @@ def algo(date: str, exclude_688: bool = False, exclude_48: bool = False, exclude
 
     df = utils.get_stock_p_change_after_volume_up(code, end_date=date, exclude_cannot_buy=exclude_cannot_buy)
     pef.append(df['p_change'].mean())
-
     index_p_change.append(utils.get_index_p_change_by_stock(code, date))
     
   stock_volume_up['next_1_p_change'] = next_1_p_change
   stock_volume_up['next_2_p_change'] = next_2_p_change
   stock_volume_up['pef'] = pef
   stock_volume_up['index_p_change'] = index_p_change
-
   stock_volume_up = stock_volume_up.sort_values('pef', ascending=False).reset_index(drop=True)
 
   if debug:

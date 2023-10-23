@@ -11,20 +11,41 @@ configFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../config
 config.read(configFile)
 
 # database default config
-database_origin = 'tencent_os_database'
+database_origin = 'localhost'
 __host__ = config.get(database_origin, "host")
 __user__ = config.get(database_origin, "user")
 __passwd__ = config.get(database_origin, "passwd")
 __db__ = config.get(database_origin, "db")
 __easy__ = config.get(database_origin, "easy")
 
+__cur__ = False
+__conn__ = False
 def connect_db(host = __host__, user = __user__, passwd = __passwd__, database = __db__, charset = False):
+	global __cur__
+	global __conn__
+	if __cur__ != False and __conn__ != False:
+		return __cur__, __conn__
+	
 	if charset == False:
 		conn = db.connect(host=host, user=user, passwd=passwd, db=database)
 	else:
 		conn = db.connect(host=host, user=user, passwd=passwd, db=database, charset=charset)
 	cur = conn.cursor()
-	return cur, conn
+	__cur__ = cur
+	__conn__ = conn
+	return __cur__, __conn__
+
+def close_db():
+	global __cur__
+	global __conn__
+	if __cur__ != False:
+		__cur__.close()
+		__cur__ = False
+
+	if __conn__ != False:
+		__conn__.close()
+		__conn__ = False
+
 
 def get_engine(host = __host__, user = __user__, passwd = __passwd__, database = __db__):
 	return create_engine('mysql+mysqlconnector://' + user + ':' + passwd + '@' + host + '/' + database +'?charset=utf8')

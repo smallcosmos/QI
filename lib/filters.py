@@ -1,7 +1,6 @@
 # coding=utf-8
 import common
 import time
-import tushare as ts
 # filter p_change, default p_change > 5
 def filter_p_change(date = False, _filter = 5):
 	cur, conn = common.connect_db()
@@ -12,8 +11,7 @@ def filter_p_change(date = False, _filter = 5):
 	codes = []
 	for code in result:
 		codes.append(code[0])
-	cur.close()
-	conn.close()
+
 	return codes
 
 # filter v_change, default v_change > 2
@@ -26,8 +24,7 @@ def filter_v_change(date = False, _filter = 2):
 	codes = []
 	for code in result:
 		codes.append(code[0])
-	cur.close()
-	conn.close()
+
 	return codes
 
 # filter close, default close < ma5
@@ -45,8 +42,7 @@ def filter_p_compare(date = False, _filter = 5):
 	codes = []
 	for code in result:
 		codes.append(code[0])
-	cur.close()
-	conn.close()
+
 	return codes
 
 def filter_utilities():
@@ -60,8 +56,7 @@ def filter_utilities():
 	codes = []
 	for code in result:
 		codes.append(code[0].encode('utf-8'))
-	cur.close()
-	conn.close()
+
 	return codes
 
 def filter_financials():
@@ -74,8 +69,7 @@ def filter_financials():
 	codes = []
 	for code in result:
 		codes.append(code[0].encode('utf-8'))
-	cur.close()
-	conn.close()
+
 	return codes
 
 # S, ST, STOP
@@ -109,8 +103,6 @@ def filter_loss():
 		if code[0] not in normalCodes:
 			stopCodes.append(code[0])
 
-	cur.close()
-	conn.close()
 	return common.unionList(codes, stopCodes)
 
 # Growth Enterprises Market 
@@ -122,8 +114,7 @@ def filter_gem():
 	codes = []
 	for code in result:
 		codes.append(code[0])
-	cur.close()
-	conn.close()
+
 	return codes
 
 # Small and medium enterprises
@@ -135,8 +126,7 @@ def filter_sme():
 	codes = []
 	for code in result:
 		codes.append(code[0])
-	cur.close()
-	conn.close()
+
 	return codes
 
 
@@ -148,8 +138,7 @@ def sort_pe(limit = 100):
 	codes = []
 	for code in result:
 		codes.append(code[0])
-	cur.close()
-	conn.close()
+
 	return codes
 
 def sort_roe(year = False, season = False, limit = 100):

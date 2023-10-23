@@ -17,8 +17,7 @@ def create_db():
 	cur, conn = common.connect_db(database='')
 	sql = "CREATE DATABASE IF NOT EXISTS `" + common.__db__ + "` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;"
 	cur.execute(sql)
-	cur.close()
-	conn.close()
+
 	if common.__easy__ == "True":
 		create_stock_basic_table()
 		create_stock_hist_table()
@@ -41,8 +40,7 @@ def create_stock_trade_calendar_table():
 	ENGINE = MyISAM DEFAULT CHARSET=utf8; \
 	ALTER TABLE `stock_trade_calendar` ADD UNIQUE KEY `trade_date` (`trade_date`);"
 	cur.execute(sql)
-	cur.close()
-	conn.close()
+
 
 #"""call once in application"""
 # 【 股票代码， 英文全称， 股票全称， 股票名称， 所属行业， 市场类型， 地域， 成立日期， 上市日期， 上市状态, 股票分类(1-沪深300) 】
@@ -64,8 +62,7 @@ def create_stock_basic_table():
 	PRIMARY KEY (`code`)) \
 	ENGINE = MyISAM DEFAULT CHARSET=utf8;ALTER TABLE `stock_basic` ADD UNIQUE KEY `code`(`code`);"
 	cur.execute(sql)
-	cur.close()
-	conn.close()
+
 
 #"""call once in application"""
 # 【 主键，股票代码， 交易日期， 开盘价， 收盘价， 最高价， 最低价，成交量，成交额，振幅，涨跌幅，涨跌额，换手率 】
@@ -90,8 +87,7 @@ def create_stock_hist_table():
 	ALTER TABLE `stock_hist` ADD UNIQUE KEY `code` (`code`,`date`); \
 	create index date_index on stock_hist (date)"
 	cur.execute(sql)
-	cur.close()
-	conn.close()
+
 
 
 #"""call once in application"""
@@ -117,8 +113,7 @@ def create_stock_index_hist_table():
 	ALTER TABLE `stock_index_hist` ADD UNIQUE KEY `code` (`code`,`date`); \
 	create index date_index on stock_index_hist (date)"
 	cur.execute(sql)
-	cur.close()
-	conn.close()
+
 
 # 【 主键，股票代码，日期， 滚动市盈率， 市盈率，市净率，滚动市销率，市现率，滚动市现率，收盘价， 流通股本，流通市值，总股本，总市值 】
 stockValuationColumns = ['code', 'date', 'pe_ttm', 'pe', 'pb', 'ps_ttm', 'pcf', 'pcf_ttm', 'close', 'free_shares', 'free_market_cap', 'total_shares', 'total_market_cap']
@@ -143,8 +138,7 @@ def create_stock_valuation_table():
 	ALTER TABLE `stock_valuation` ADD UNIQUE KEY `code` (`code`,`date`); \
 	create index date_index on stock_valuation (date)"
 	cur.execute(sql)
-	cur.close()
-	conn.close()
+
 
 
 def create_stock_index_table():
@@ -157,8 +151,7 @@ def create_stock_index_table():
 	PRIMARY KEY (`index`)) \
 	ENGINE = MyISAM DEFAULT CHARSET=utf8;ALTER TABLE `stock_index` ADD UNIQUE KEY `code`(`code`);"
 	cur.execute(sql)
-	cur.close()
-	conn.close()
+
 
 def init_stock_index():
 	engine = common.get_engine()
@@ -262,8 +255,7 @@ def init_stock_hist(start_date: str = '1970-01-01', end_date: str = None, start_
 		
 		time.sleep(0.1)
 
-	cur.close()
-	conn.close()
+
 
 def update_stock_hist_today():
 	engine = common.get_engine()
@@ -295,8 +287,6 @@ def update_stock_hist_today():
 	cur.execute(f'REPLACE INTO stock_hist ({columns}) SELECT {columns} FROM stock_temp;')
 	print(f'insert {dfInMarket.index.size} records to stock_hist')
 
-	cur.close()
-	conn.close()
 
 def update_stock_300():
 	cur, conn = common.connect_db()
@@ -313,9 +303,7 @@ def update_stock_300():
 		update_new_sql = f'update stock_basic set type = 1 where code in ({",".join(new_stock300)})'
 		cur.execute(update_new_sql)
 		print(f'stock300 update: add {len(new_stock300)} records')
-	
-	cur.close()
-	conn.close()
+
 
 def update_stock_valuation_today(date: str = None):
 	if date is None:
@@ -423,6 +411,3 @@ def update_stock_index_hist_today():
 	columns = ','.join(stockIndexHisColumns)
 	cur.execute(f'REPLACE INTO stock_index_hist ({columns}) SELECT {columns} FROM stock_temp;')
 	print(f'insert {dfInMarket.index.size} records to stock_hist')
-
-	cur.close()
-	conn.close()

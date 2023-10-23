@@ -1,8 +1,8 @@
 import setup
+import common
 import pandas as pd
 import numpy as np
 import akshare as ak
-import tushare as ts
 from matplotlib import pyplot as plt
 from urllib.parse import urlencode
 import sys
@@ -47,7 +47,7 @@ def periodTask(start_date = None, end_date = None, start_code = None):
 
 # dailyTask()
 
-periodTask(start_date='2023-10-18', end_date='2023-10-19', start_code='000001')
+# periodTask(start_date='2023-10-18', end_date='2023-10-19', start_code='000001')
 # def test():
 #   print(1111)
 
@@ -79,3 +79,5 @@ periodTask(start_date='2023-10-18', end_date='2023-10-19', start_code='000001')
 # stocks = volume_up.algo_today(exclude_688 = True, exclude_48 = True, exclude_3 = True, exclude_cannot_buy = True, debug = True)
 
 # stock.update_stock_basic_append()
+
+common.close_db()

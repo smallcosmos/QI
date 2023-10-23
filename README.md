@@ -1,3 +1,15 @@
+# depedence
+pip3 install pandas
+pip3 install akshare
+pip3 install numpy
+pip3 install pandas
+pip3 install matplotlib
+pip3 install mysql-connector-python
+pip3 install sqlalchemy
+pip3 install requests
+pip3 install schedule
+
+
 # 东方财富网  
 # https://quote.eastmoney.com/concept/sh603777.html?from=classic
 

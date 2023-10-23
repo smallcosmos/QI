@@ -17,8 +17,7 @@ def get_previous_trading_date(date: str, include_this_day: bool = False, days: i
   cur.execute(sql)
   results = cur.fetchall()
   date = pd.Series([item[0] for item in results])
-  cur.close()
-  conn.close()
+
   if days == 1:
     return date[0] if len(date) else None
   else:
@@ -33,8 +32,7 @@ def get_next_trading_date(date: str, include_this_day: bool = False, days: int =
   cur.execute(sql)
   results = cur.fetchall()
   date = pd.Series([item[0] for item in results])
-  cur.close()
-  conn.close()
+
   if days == 1:
     return date[0] if len(date) else None
   else:
@@ -49,8 +47,7 @@ def get_trading_date(start_date: str, end_date: str):
   cur.execute(sql)
   results = cur.fetchall()
   date = pd.Series([item[0] for item in results])
-  cur.close()
-  conn.close()
+
   return date
 
 # 获取所有股票列表
@@ -60,8 +57,7 @@ def get_all_stock_codes():
 	cur.execute(sql)
 	results = cur.fetchall()
 	codes = pd.Series([item[0] for item in results])
-	cur.close()
-	conn.close()
+
 	return codes
 
 # 获取已退市股票列表
@@ -71,8 +67,7 @@ def get_off_stock_codes():
   cur.execute(sql)
   results = cur.fetchall()
   codes = pd.Series([item[0] for item in results])
-  cur.close()
-  conn.close()
+
   return codes
 
 # 获取正常上市的所有股票列表
@@ -82,8 +77,7 @@ def get_stock_codes():
 	cur.execute(sql)
 	results = cur.fetchall()
 	codes = pd.Series([item[0] for item in results])
-	cur.close()
-	conn.close()
+
 	return codes
 
 # 更新已退市的所有股票列表
@@ -91,8 +85,7 @@ def update_outdate_list_status_code(off_codes: list):
   cur, conn = common.connect_db()
   sql = f"update stock_basic set listStatus = '退市' where code in ({','.join(off_codes)}) and listStatus = '正常上市'"
   cur.execute(sql)
-  cur.close()
-  conn.close()
+
   return
 
 # 获取沪深300股票列表
@@ -102,8 +95,7 @@ def get_stock_300():
 	cur.execute(sql)
 	results = cur.fetchall()
 	codes = pd.Series([item[0] for item in results])
-	cur.close()
-	conn.close()
+
 	return codes
 
 # 获取市值、市净率
@@ -119,8 +111,7 @@ def get_stock_fin(symbols: list = [], date: str = None):
   columns = ['code', 'pb', 'mc']
   df = pd.DataFrame(results, columns=columns)
   df.set_index('code', inplace = True)
-  cur.close()
-  conn.close()
+
   return df
 
 def get_index_p_change_by_stock(symbol: str, date: str):
@@ -150,8 +141,7 @@ def get_index_p_change(symbol: str, date: str):
     return 0
   
   p_change = results[0][0]
-  cur.close()
-  conn.close()
+
   return p_change
 
 # 获取股票收益率 close[-1] / close[0] - 1
@@ -177,8 +167,7 @@ def get_stock_earnings(symbol: str = None, date: str = None, count: int = 2):
     return 0
   
   end_close = results[0][0]
-  cur.close()
-  conn.close()
+
   return end_close / start_close - 1
 
 
@@ -205,8 +194,7 @@ def get_stock_index_earnings(symbol: str = None, date: str = None, count: int = 
     return 0
   
   end_close = results[0][0]
-  cur.close()
-  conn.close()
+
   return end_close / start_close - 1
 
 
@@ -217,8 +205,7 @@ def get_stock_index():
   cur.execute(sql)
   results = cur.fetchall()
   codes = pd.Series([item[0] for item in results])
-  cur.close()
-  conn.close()
+
   return codes
 
 # 获取指数列表sec_id
@@ -228,8 +215,7 @@ def get_stock_index_ids():
   cur.execute(sql)
   results = cur.fetchall()
   ids = pd.Series([item[0] for item in results])
-  cur.close()
-  conn.close()
+
   return ids
 
 # 获取指定时间周期的股票涨跌幅
@@ -253,8 +239,7 @@ def get_period_stock_p_change(symbol: str, start_date: str, end_date: str):
     return -9999
   
   end_close = results[0][0]
-  cur.close()
-  conn.close()
+
   return (end_close - start_open) / start_open
 
 
@@ -267,8 +252,7 @@ def get_period_stock_index_p_change(symbol: str, start_date: str, end_date: str)
   sql = f"select open from stock_index_hist where code = '{symbol}' and date = '{start_date}'"
   cur.execute(sql)
   results = cur.fetchall()
-  cur.close()
-  conn.close()
+
   if len(results) == 0 or not results[0][0]:
      return -9999
   
@@ -296,8 +280,7 @@ def get_period_stock_call_auction(symbol: str, end_date: str, days: int = 30):
   df = pd.DataFrame(results, columns=columns)
   df['pre_close'] = df['close'].shift(-1)
   df = df.drop(df.index[-1])
-  cur.close()
-  conn.close()
+
   return df
 
 # 获取指定日期的开盘涨跌幅，(开盘 - 前一日收盘) / 前一日收盘 * 100
@@ -314,8 +297,7 @@ def get_stock_open_p_change(symbol: str, date: str):
   
   df['pre_close'] = df['close'].shift(-1)
   df = df.drop(df.index[-1])
-  cur.close()
-  conn.close()
+
   return (df.iloc[0].open - df.iloc[0].pre_close) / df.iloc[0].pre_close * 100
 
 # 获取指定日期的涨跌幅
@@ -326,8 +308,6 @@ def get_stock_close_p_change(symbol: str, date: str):
   cur.execute(sql)
   results = cur.fetchall()
   
-  cur.close()
-  conn.close()
   if len(results) == 0 or not results[0][0]:
     return 0
   return results[0][0]
@@ -350,8 +330,6 @@ def get_stock_p_change_after_sequent_down(symbol: str, sequent_down_days: int = 
   cur.execute(sql)
   results = cur.fetchall()
   
-  cur.close()
-  conn.close()
   df = pd.DataFrame(results, columns=['date', 'p_change'])
   df['sequent_valid'] = df['p_change'].rolling(window=sequent_down_days + 2).apply(lambda x: _custom_check_sequent_down(x), raw=True)
  
@@ -372,8 +350,6 @@ def get_stock_p_change_after_volume_up(symbol: str, end_date: str = None, count_
   cur.execute(sql)
   results = cur.fetchall()
   
-  cur.close()
-  conn.close()
   df = pd.DataFrame(results, columns=['date', 'p_change', 'volume'])
 
   df['volume_diff'] = df['volume'].diff()
@@ -401,8 +377,6 @@ def get_stock_volume_up(date: str = None, exclude_cannot_buy: bool = False):
   cur.execute(sql)
   results = cur.fetchall()
   
-  cur.close()
-  conn.close()
   df = pd.DataFrame(results, columns=['code', 'date', 'p_change', 'volume'])
   trading_df = df[df['date'] == trading_date]
   trading_df = trading_df.sort_values('code').set_index('code', drop=False)
@@ -431,8 +405,6 @@ def get_today_stock_volume_up(exclude_cannot_buy: bool = False):
   cur.execute(sql)
   results = cur.fetchall()
   
-  cur.close()
-  conn.close()
   df = pd.DataFrame(results, columns=['code', 'date', 'p_change', 'volume'])
   trading_df = one_data.get_today_stock_hist()
   
@@ -463,9 +435,7 @@ def get_stock_p_change_after_big_increase(symbol: str, end_date: str = None, cou
   sql = f"SELECT code, date, p_change, open, close, high FROM stock_hist where code = '{symbol}' and date > '{start_date}' and date < '{end_date}'"
   cur.execute(sql)
   results = cur.fetchall()
-  
-  cur.close()
-  conn.close()
+
   df = pd.DataFrame(results, columns=['code', 'date', 'p_change', 'open', 'close', 'high'])
   condition = (df['p_change'].shift(1).between(5, 9.8)) & (df['close'].shift(1) > df['open'].shift(1)) & ((df['high'].shift(1) - df['close'].shift(1)) / df['close'].shift(1) < drop)
   filtered_df = df[condition]
@@ -482,8 +452,6 @@ def get_big_increase_stock(date: str = None, drop: float = 0.01):
   cur.execute(sql)
   results = cur.fetchall()
   
-  cur.close()
-  conn.close()
   df = pd.DataFrame(results, columns=['date', 'code', 'p_change'])
 
   return df
@@ -499,6 +467,5 @@ def get_small_stock(date: str):
   cur.execute(sql)
   results = cur.fetchall()
   codes = pd.Series([item[0] for item in results])
-  cur.close()
-  conn.close()
+
   return codes
