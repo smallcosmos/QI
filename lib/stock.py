@@ -406,8 +406,6 @@ def update_stock_index_hist_today():
 	cur, conn = common.connect_db()
 	engine = common.get_engine()
 	dfInMarket = one_data.get_stock_index_today()
-	dfInMarket.to_sql('stock_temp', con=engine, if_exists='replace', index=False, method='multi', chunksize=1000)
+	dfInMarket.to_sql('stock_index_hist', con=engine, if_exists='append', index=False, method='multi', chunksize=1000)
 
-	columns = ','.join(stockIndexHisColumns)
-	cur.execute(f'REPLACE INTO stock_index_hist ({columns}) SELECT {columns} FROM stock_temp;')
 	print(f'insert {dfInMarket.index.size} records to stock_hist')

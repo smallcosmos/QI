@@ -32,6 +32,7 @@ def dailyTask():
   stock.update_stock_valuation_today()
   # 更新股票指数当日行情
   stock.update_stock_index_hist_today()
+  stock.update_stock_300()
 
 def periodTask(start_date = None, end_date = None, start_code = None):
   if start_date is None:
@@ -45,8 +46,8 @@ def periodTask(start_date = None, end_date = None, start_code = None):
   # 更新股票指数指定日期行情
   stock.update_stock_index_hist_period(start_date=start_date, end_date=end_date)
 
-# dailyTask()
-
+dailyTask()
+# stock.update_stock_300()
 # periodTask(start_date='2023-10-18', end_date='2023-10-19', start_code='000001')
 # def test():
 #   print(1111)
@@ -77,7 +78,5 @@ def periodTask(start_date = None, end_date = None, start_code = None):
 ###########################################
 # stocks = volume_up.algo('2023-10-12', exclude_688 = True, exclude_48 = True, exclude_3 = True, exclude_cannot_buy = True, debug = True)
 # stocks = volume_up.algo_today(exclude_688 = True, exclude_48 = True, exclude_3 = True, exclude_cannot_buy = True, debug = True)
-
-# stock.update_stock_basic_append()
 
 common.close_db()
