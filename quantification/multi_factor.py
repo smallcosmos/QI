@@ -152,8 +152,8 @@ def test(test_date: str, count_bench: int = 20, future_days: int = 30):
   stock_pool_df = stock_pool_df.sort_values('symbol')
   print('stock_pool_df: ', stock_pool_df)
 
-  p_change = utils.get_period_stock_index_p_change(symbol='000001', start_date=start_date, end_date=end_date)
-  print('stock_index_sh_000001: ', p_change)
-  p_change = utils.get_period_stock_index_p_change(symbol='399001', start_date=start_date, end_date=end_date)
-  print('stock_index_sz_399001: ', p_change)
+  # p_change = utils.get_period_stock_index_p_change(symbol='000001', start_date=start_date, end_date=end_date)
+  # print('stock_index_sh_000001: ', p_change)
+  # p_change = utils.get_period_stock_index_p_change(symbol='399001', start_date=start_date, end_date=end_date)
+  # print('stock_index_sz_399001: ', p_change)
   

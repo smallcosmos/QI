@@ -312,6 +312,19 @@ def get_stock_close_p_change(symbol: str, date: str):
     return 0
   return results[0][0]
 
+# 获取未来N天的涨跌幅
+def get_stock_p_change_next_N(symbol: str, date: str, count_bench: int = 10):
+  cur, conn = common.connect_db()
+  trading_date = get_next_trading_date(date, include_this_day=True)
+  trading_days = get_next_trading_date(date=date, include_this_day=True, days = count_bench)
+  max_trading_date = trading_days.iloc[-1]
+  sql = f"SELECT code, date, p_change FROM stock_hist where date >= '{trading_date}' and date <= '{max_trading_date}' and code = '{symbol}'"
+  cur.execute(sql)
+  results = cur.fetchall()
+
+  df = pd.DataFrame(results, columns=['code', 'date', 'p_change'])
+  return df
+
 
 def _custom_check_sequent_down(data):
   # """
@@ -469,3 +482,48 @@ def get_small_stock(date: str):
   codes = pd.Series([item[0] for item in results])
 
   return codes
+
+# 获取当日最高价高于3
+def getStockUpThan3(date: str):
+  return []
+
+# 涨幅3～5%， 且市值>100亿
+def getDiaoMaoStock(date: str, select_can_buy: bool = True):
+  cur, conn = common.connect_db()
+  if date is None:
+    date = datetime.date.today()
+
+  date = get_next_trading_date(date, include_this_day=True)
+  next_date = get_next_trading_date(date)
+  pre_date = get_previous_trading_date(date)
+  next_p_change_than_3_condition = f"AND ((nd.next_high - v.close) / v.close) * 100 > 3" if select_can_buy else ''
+  sql = f"WITH next_day AS ( \
+    SELECT h.code, h.date AS next_date, h.high AS next_high, h.open AS next_open \
+    FROM stock.stock_hist h \
+    WHERE h.date = '{next_date}' \
+  ), \
+  pre_1_day AS ( \
+    SELECT p1.code, p1.p_change AS p1_change \
+    FROM stock.stock_hist p1 \
+    WHERE p1.date = '{pre_date}' \
+  ) \
+  SELECT v.code, v.close, nd.next_date \
+  FROM stock.stock_valuation v \
+  JOIN stock.stock_hist h ON v.code = h.code AND v.date = h.date \
+  JOIN next_day nd ON h.code = nd.code \
+  WHERE v.free_market_cap > 100 * 100000000 \
+    AND v.date = '{date}' \
+    AND h.p_change > 3 \
+    AND h.p_change < 5 \
+    AND h.turnover > 5 \
+    AND h.turnover < 15 \
+    AND ((nd.next_open - v.close) / v.close) * 100 > 1 \
+    AND ((nd.next_open - v.close) / v.close) * 100 < 3 \
+    {next_p_change_than_3_condition} \
+  "
+  cur.execute(sql)
+  results = cur.fetchall()
+
+  df = pd.DataFrame(results, columns=['code', 'close', 'date'])
+
+  return df

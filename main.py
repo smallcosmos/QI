@@ -18,6 +18,7 @@ import call_auction
 import sequent_down
 import big_increase
 import volume_up
+import diaomao
 
 # stock.create_db()
 
@@ -46,9 +47,10 @@ def periodTask(start_date = None, end_date = None, start_code = None):
   # 更新股票指数指定日期行情
   stock.update_stock_index_hist_period(start_date=start_date, end_date=end_date)
 
-dailyTask()
-# stock.update_stock_300()
-# periodTask(start_date='2023-10-18', end_date='2023-10-19', start_code='000001')
+# dailyTask()
+# stock.update_stock_valuation_period(start_date='2024-11-30', end_date='2024-12-26')
+
+# cur, conn = common.connect_db()
 # def test():
 #   print(1111)
 
@@ -79,4 +81,16 @@ dailyTask()
 # stocks = volume_up.algo('2023-10-12', exclude_688 = True, exclude_48 = True, exclude_3 = True, exclude_cannot_buy = True, debug = True)
 # stocks = volume_up.algo_today(exclude_688 = True, exclude_48 = True, exclude_3 = True, exclude_cannot_buy = True, debug = True)
 
-common.close_db()
+# common.close_db()
+
+# diaomao.test_30_days('2024-12-27', 2)
+# diaomao.test_365_days('2024-12-27', 2)
+
+def xuangu():
+  # 更新股票当日行情, 获取开盘价
+  stock.update_stock_hist_today()
+  
+  # diaomao策略
+  diaomao.selectDiaoMaoStock()
+
+xuangu()

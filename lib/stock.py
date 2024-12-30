@@ -217,7 +217,7 @@ def update_stock_hist_period(start_date: str = None, end_date: str = None, start
 	
 	init_stock_hist(start_date, end_date, start_code)
 
-def init_stock_hist(start_date: str = '1970-01-01', end_date: str = None, start_code: str = None):
+def init_stock_hist(start_date: str = '2000-01-01', end_date: str = None, start_code: str = None):
 	cur, conn = common.connect_db()
 	engine = common.get_engine()
 	if end_date is None:
@@ -342,13 +342,13 @@ def update_stock_valuation_today(date: str = None):
 	dfInMarket.to_sql('stock_valuation', con=engine, if_exists='append', index=False, method='multi', chunksize=1000)
 	print(f'update {date} stock valuation succeed, insert {dfInMarket.index.size} records')
 	
-def update_stock_valuation_period(start_date: str = '2018-01-01', end_date: str = None):
+def update_stock_valuation_period(start_date: str = '2020-01-01', end_date: str = None):
 	if end_date is None:
 		end_date = datetime.date.today().strftime("%Y-%m-%d")
 	if start_date is None:
 		start_date = end_date
-	elif start_date < '2018-01-01':
-		start_date = '2018-01-01'
+	elif start_date < '2020-01-01':
+		start_date = '2020-01-01'
 
 	trading_date = utils.get_trading_date(start_date = start_date, end_date = end_date)
 
@@ -367,7 +367,7 @@ def update_stock_index_hist_period(start_date: str = None, end_date: str = None)
 	init_stock_index_hist(start_date, end_date)
 
 
-def init_stock_index_hist(start_date: str = '1970-01-01', end_date: str = None):
+def init_stock_index_hist(start_date: str = '2000-01-01', end_date: str = None):
 	engine = common.get_engine()
 	if end_date is None:
 		end_date = datetime.date.today().strftime("%Y-%m-%d")
@@ -408,4 +408,4 @@ def update_stock_index_hist_today():
 	dfInMarket = one_data.get_stock_index_today()
 	dfInMarket.to_sql('stock_index_hist', con=engine, if_exists='append', index=False, method='multi', chunksize=1000)
 
-	print(f'insert {dfInMarket.index.size} records to stock_hist')
+	print(f'insert {dfInMarket.index.size} records to stock_index_hist')

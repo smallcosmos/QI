@@ -11,7 +11,7 @@ configFile = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../config
 config.read(configFile)
 
 # database default config
-database_origin = 'localhost'
+database_origin = 'tencent_os_database'
 __host__ = config.get(database_origin, "host")
 __user__ = config.get(database_origin, "user")
 __passwd__ = config.get(database_origin, "passwd")
@@ -24,6 +24,10 @@ def connect_db(host = __host__, user = __user__, passwd = __passwd__, database =
 	global __cur__
 	global __conn__
 	if __cur__ != False and __conn__ != False:
+		# __cur__.close()
+		# __cur__ = False
+		# __conn__.close()
+		# __conn__ = False
 		return __cur__, __conn__
 	
 	if charset == False:
