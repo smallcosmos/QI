@@ -208,6 +208,14 @@ def get_stock_index():
 
   return codes
 
+# 获取交易日数
+def get_count_trading_date(start_date: str, end_date: str):
+  cur, conn = common.connect_db()
+  sql = f"SELECT count(*) FROM stock.stock_trade_calendar where trade_date >= '{start_date}' and trade_date <= '{end_date}'"
+  cur.execute(sql)
+  results = cur.fetchall()
+  return results[0][0]
+
 # 获取指数列表sec_id
 def get_stock_index_ids():
   cur, conn = common.connect_db()
@@ -487,7 +495,7 @@ def get_small_stock(date: str):
 def getStockUpThan3(date: str):
   return []
 
-# 涨幅3～5%， 且市值>100亿
+# 涨幅3～5%， 且市值>1亿【优先选市值>100亿，重点选市值>200亿】, 换手5～15， 第二天开盘涨幅1～3, 且触碰3%
 def getDiaoMaoStock(date: str, select_can_buy: bool = True):
   cur, conn = common.connect_db()
   if date is None:
@@ -507,7 +515,7 @@ def getDiaoMaoStock(date: str, select_can_buy: bool = True):
     FROM stock.stock_hist p1 \
     WHERE p1.date = '{pre_date}' \
   ) \
-  SELECT v.code, v.close, nd.next_date \
+  SELECT v.code, v.close, v.free_market_cap, nd.next_date \
   FROM stock.stock_valuation v \
   JOIN stock.stock_hist h ON v.code = h.code AND v.date = h.date \
   JOIN next_day nd ON h.code = nd.code \
@@ -524,6 +532,39 @@ def getDiaoMaoStock(date: str, select_can_buy: bool = True):
   cur.execute(sql)
   results = cur.fetchall()
 
-  df = pd.DataFrame(results, columns=['code', 'close', 'date'])
+  df = pd.DataFrame(results, columns=['code', 'close', 'free_market_cap', 'date'])
+  df['free_market_cap'] = df['free_market_cap'] / 100000000
+
+  return df
+
+# 预选： 涨幅3～5%， 且市值>1亿【优先选市值>100亿，重点选市值>200亿】, 换手5～15
+def getDiaoMaoStockPreSelect(date: str):
+  cur, conn = common.connect_db()
+  if date is None:
+    date = datetime.date.today()
+
+  date = get_next_trading_date(date, include_this_day=True)
+  next_date = get_next_trading_date(date)
+  pre_date = get_previous_trading_date(date)
+  sql = f"WITH pre_1_day AS ( \
+    SELECT p1.code, p1.p_change AS p1_change \
+    FROM stock.stock_hist p1 \
+    WHERE p1.date = '{pre_date}' \
+  ) \
+  SELECT v.code, v.close, v.free_market_cap \
+  FROM stock.stock_valuation v \
+  JOIN stock.stock_hist h ON v.code = h.code AND v.date = h.date \
+  WHERE v.free_market_cap > 1 * 100000000 \
+    AND v.date = '{date}' \
+    AND h.p_change > 3 \
+    AND h.p_change < 5 \
+    AND h.turnover > 5 \
+    AND h.turnover < 15 \
+  "
+  cur.execute(sql)
+  results = cur.fetchall()
+
+  df = pd.DataFrame(results, columns=['code', 'close', 'free_market_cap'])
+  df['free_market_cap'] = df['free_market_cap'] / 100000000
 
   return df

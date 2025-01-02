@@ -47,17 +47,17 @@ def periodTask(start_date = None, end_date = None, start_code = None):
   # 更新股票指数指定日期行情
   stock.update_stock_index_hist_period(start_date=start_date, end_date=end_date)
 
+# 开盘 9:30 选当日股
+def xuangu():
+  # 更新股票当日行情, 获取开盘价
+  stock.update_stock_hist_today()
+  
+  # diaomao策略
+  diaomao.selectDiaoMaoStock()
+
+
+
 # dailyTask()
-# stock.update_stock_valuation_period(start_date='2024-11-30', end_date='2024-12-26')
-
-# cur, conn = common.connect_db()
-# def test():
-#   print(1111)
-
-# schedule.every(5).seconds.do(test)
-# while True:
-#   schedule.run_pending()
-#   time.sleep(1)
 
 # multi_factor.test(test_date = '2022-09-02', count_bench = 30, future_days = 7)
 
@@ -83,14 +83,19 @@ def periodTask(start_date = None, end_date = None, start_code = None):
 
 # common.close_db()
 
-# diaomao.test_30_days('2024-12-27', 2)
-# diaomao.test_365_days('2024-12-27', 2)
+# diaomao.test_15_days('2025-01-02', 2, with_dynamic=False)
+# diaomao.test_30_days('2025-01-02', 2, with_dynamic=False)
+diaomao.test_by_year('2024', 2, with_dynamic=True)
 
-def xuangu():
-  # 更新股票当日行情, 获取开盘价
-  stock.update_stock_hist_today()
-  
-  # diaomao策略
-  diaomao.selectDiaoMaoStock()
 
-xuangu()
+
+# xuangu()
+# diaomao.preSelect('2024-12-31')
+# diaomao.selectDiaoMaoStock('2024-12-14')
+
+# 是否跑赢指数
+# test_code = '600398'
+# test_date = '2024-12-31'
+# stock_return = utils.get_stock_earnings(symbol=test_code, date=test_date, count=7)
+# market_return = utils.get_stock_index_earnings(symbol='000300', date=test_date, count=7)
+# print(stock_return, market_return)
