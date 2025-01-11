@@ -52,50 +52,27 @@ def xuangu():
   # 更新股票当日行情, 获取开盘价
   stock.update_stock_hist_today()
   
+  # 取前一个交易日
+  select_date = utils.get_previous_trading_date(datetime.date.today())
   # diaomao策略
-  diaomao.selectDiaoMaoStock()
+  diaomao.selectDiaoMaoStock1(select_date=select_date)
+  diaomao.selectDiaoMaoStock2(select_date=select_date)
+  diaomao.selectDiaoMaoStock3(select_date=select_date)
 
+def pre_xuanfu(select_date: str):
+  diaomao.selectDiaoMaoStock1(select_date=select_date, pre_select=True)
+  diaomao.selectDiaoMaoStock2(select_date=select_date, pre_select=True)
+  diaomao.selectDiaoMaoStock3(select_date=select_date, pre_select=True)
 
-
+# diaomao.selectDiaoMaoStock1('2025-01-08')
 # dailyTask()
-
-# multi_factor.test(test_date = '2022-09-02', count_bench = 30, future_days = 7)
-
-# call_auction.test('2023-08-25')
-
-# sequent_down.algo()
-# big_increase.test('2023-08-08')
-# big_increase.test_30_days('2023-05-29')
-
-# [8.23-10.11: 7781]
-# [7.12-8.22: -11832]
-# [5.29-7.11: -7291]
-# [4.13-5.29: -14421]
-
-# volume_up.test('2023-10-13', exclude_688 = True, exclude_48 = True, exclude_3 = True, exclude_cannot_buy = True)
-# volume_up.test_30_days('2023-07-11', exclude_688 = True, exclude_48 = True, exclude_3 = False, exclude_cannot_buy = True)
-# volume_up.test_hist()
-
-# volume_up.test_limit_up('2023-10-13')
-###########################################
-# stocks = volume_up.algo('2023-10-12', exclude_688 = True, exclude_48 = True, exclude_3 = True, exclude_cannot_buy = True, debug = True)
-# stocks = volume_up.algo_today(exclude_688 = True, exclude_48 = True, exclude_3 = True, exclude_cannot_buy = True, debug = True)
 
 # common.close_db()
 
-# diaomao.test_15_days('2025-01-02', 2, with_dynamic=False)
-# diaomao.test_30_days('2025-01-02', 2, with_dynamic=False)
-diaomao.test_by_year('2024', 2, with_dynamic=True)
-
+# diaomao.test_15_days('2025-01-02', 2, with_dynamic=True)
+# diaomao.test_30_days('2025-01-07', 2, with_dynamic=True)
+diaomao.test_by_year('2020', 2, with_dynamic=True, all_type=False)
 
 
 # xuangu()
-# diaomao.preSelect('2024-12-31')
-# diaomao.selectDiaoMaoStock('2024-12-14')
-
-# 是否跑赢指数
-# test_code = '600398'
-# test_date = '2024-12-31'
-# stock_return = utils.get_stock_earnings(symbol=test_code, date=test_date, count=7)
-# market_return = utils.get_stock_index_earnings(symbol='000300', date=test_date, count=7)
-# print(stock_return, market_return)
+# pre_xuanfu('2025-01-09')

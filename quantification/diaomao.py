@@ -18,8 +18,8 @@ import datetime
 # '''
 
 # date: 即购买日
-def algo(date: str, select_can_buy=True):
-  diaoMaoStock = utils.getDiaoMaoStock(date=date, select_can_buy=select_can_buy)
+def algo(date: str, min_market_cap = 150, max_market_cap = -1):
+  diaoMaoStock = utils.getDiaoMaoStock(date=date, pre_select=False, min_market_cap=min_market_cap, max_market_cap=max_market_cap)
 
   diaoMaoStock = filter(diaoMaoStock)
   return diaoMaoStock
@@ -39,38 +39,64 @@ def filter(df):
   df = df.sort_values('free_market_cap', ascending=False)
   return df
 
-def test(buy_date: str, count_bench: int = 10, with_dynamic: bool = False):
+def test(buy_date: str, count_bench: int = 10, with_dynamic: bool = False, all_type: bool = False):
   buy_date = utils.get_next_trading_date(buy_date, include_this_day = True)
-  test_date = utils.get_previous_trading_date(buy_date)
-  symbols_pool = algo(test_date)
+  select_date = utils.get_previous_trading_date(buy_date)
+  symbols_pool = pd.DataFrame([])
+  if all_type:
+    symbols_pool = algo(select_date, min_market_cap=150)
+    small_30_symbols = algo(select_date, min_market_cap=30, max_market_cap=40)
+    small_20_symbols =  algo(select_date, min_market_cap=20, max_market_cap=30)
+    if len(small_30_symbols):
+      symbols_pool= pd.concat([symbols_pool, small_30_symbols]) if len(symbols_pool) else small_30_symbols
+    if len(small_20_symbols):
+      symbols_pool= pd.concat([symbols_pool, small_20_symbols]) if len(symbols_pool) else small_20_symbols
+  else: 
+    symbols_pool = algo(select_date, min_market_cap=150)
   # 每股买入
   money_per_code = 10000
   # 针对<100亿市值的case做优化。 过去一年的数据上测试，7的效果远远高于2-15的其他数字。 过去2-3年的数据上，不过滤效果更好
-  earnings_days = 7
+  earnings_days = 3
   if count_bench < 1:
     count_bench = 1
 
-  df = pd.DataFrame(columns=[f"{buy_date}买入", "市值", f"近{earnings_days}天收益率", f"近{earnings_days}天沪深300指数收益率", "是否跑赢指数", f"未来{count_bench}日涨跌详情", '盈亏'])
+  df = pd.DataFrame(columns=[f"{buy_date}买入", "当日开盘涨跌幅", "市值", "量比", f"近{earnings_days}天收益率", f"近{earnings_days}天沪深300指数收益率", "是否跑赢指数", f"未来{count_bench}日涨跌详情", '盈亏'])
   for index, row in symbols_pool.iterrows():
     code = row['code']
-    free_market_cap = row['free_market_cap']
-    next_n_p_change = utils.get_stock_p_change_next_N(code, test_date, count_bench = count_bench + 2)
-    # 忽略第一天、并默认第二天以3%预设买入
-    total_p_change = next_n_p_change['p_change'].sum() - next_n_p_change['p_change'].iloc[0] - 3
-    joined_p_change = ', '.join(next_n_p_change['p_change'].astype(str))
-    stock_return = '-'
-    market_return = '-'
-    runThanStock300 = 1
-    # stock_return = utils.get_stock_earnings(symbol=code, date=test_date, count=earnings_days)
-    # market_return = utils.get_stock_index_earnings(symbol='000300', date=test_date, count=earnings_days)
-    # runThanStock300 = 1 if stock_return - market_return > 0 else 0
-    if runThanStock300 == 1:
-      df.loc[len(df)] = [code, free_market_cap, stock_return, market_return, runThanStock300, joined_p_change, total_p_change * money_per_code / 100]
+    free_market_cap = f"{round(row['free_market_cap'], 1)}亿"
+    volume = f"{round(row['volume'], 1)}万"
+    
+    if len(df) < 3:
+      open_p_change = round((row['next_open'] - row['close']) / row['close'] * 100, 2)
+      next_n_p_change = utils.get_stock_p_change_next_N(code, select_date, count_bench = count_bench + 2)
+      joined_p_change = ', '.join(next_n_p_change['p_change'].astype(str))
+      # 忽略第一天、并默认第二天以3%预设买入
+      total_p_change = next_n_p_change['p_change'].sum() - next_n_p_change['p_change'].iloc[0] - (open_p_change + 1)
+      # stock_return = '-'
+      # market_return = '-'
+      # runThanStock300 = 1
+      stock_return = utils.get_stock_earnings(symbol=code, date=select_date, count=earnings_days) * 100
+      market_return = utils.get_stock_index_earnings(symbol='000300', date=select_date, count=earnings_days) * 100
+      runThanStock300 = 1 if stock_return - market_return > 0 else 0
+
+      # volumeChange = utils.getStockVolumeChange(code=code, date=select_date)
+      # print(f"{code} {volumeChange['dates']} 成交量变化： {volumeChange['volume_change']}")
+
+      volume_radio = utils.getStockVolumeRadio(code, date=select_date)
+      # if volume_radio > 1 and (market_return > 0 and market_return < 1) and stock_return > 12 and stock_return < 100:
+      # if volume_radio > 1 and ((stock_return > 4 and stock_return < 10) or (stock_return > 10 and market_return > 2)):
+      df.loc[len(df)] = [code, open_p_change, free_market_cap, volume_radio, stock_return, market_return, runThanStock300, joined_p_change, total_p_change * money_per_code / 100]
   
   if(len(df)):
+    # index_change = utils.getStockIndexChange(select_date)
+    # print(f"{index_change['dates']} 大盘指数变化：")
+    # print(f"上证指数： {index_change['shang_index']}")
+    # print(f"深圳指数： {index_change['shen_index']}")
+
     earning = round(df['盈亏'].sum(), 1) if with_dynamic else round(df['盈亏'].sum() / len(df), 1)
-    df.loc[len(df)] = ['平均', '-', '-', '-', '-', '-', earning]
+    df.loc[len(df)] = ['平均', '-', '-', '-', '-', '-', '-', '-', earning]
     print(df)
+    print('')
   
   return df
 
@@ -98,14 +124,14 @@ def test_30_days(date: str, count_bench: int = 10, with_dynamic: bool = False):
   print(df)
   print(f"30天盈亏: {df['盈亏'].sum()}")
 
-def test_by_year(year: str, count_bench: int = 10, with_dynamic: bool = False):
+def test_by_year(year: str, count_bench: int = 10, with_dynamic: bool = False, all_type: bool = False):
   start_date = f"{year}-01-01";
   end_date = f"{year}-12-31";
   days = utils.get_count_trading_date(start_date, end_date)
   dates = utils.get_next_trading_date(start_date, include_this_day=True, days=days)
   df = pd.DataFrame(columns=["日期", "买入", "盈亏"])
   for trading_date in dates:
-    result = test(trading_date, count_bench, with_dynamic=with_dynamic)
+    result = test(trading_date, count_bench, with_dynamic=with_dynamic, all_type=all_type)
     if(len(result)):
       buy_code = ', '.join(result.iloc[:, 0].astype(str))
       df.loc[len(df)] = [trading_date, buy_code, result.iloc[-1]['盈亏']]
@@ -113,61 +139,68 @@ def test_by_year(year: str, count_bench: int = 10, with_dynamic: bool = False):
   print(df)
   print(f"{year}全年盈亏: {df['盈亏'].sum()}")
 
+def addExtraInfo(df, select_date: str):
+  earnings_days = 3
+  new_df = pd.DataFrame(columns=['code', 'close', 'free_market_cap', 'volume_radio', 'volume', 'stock_return', 'market_return', 'select_date', 'buy_date', 'next_open'])
+  for index, row in df.iterrows():
+    # [code, free_market_cap, volume_radio, stock_return, market_return, runThanStock300, joined_p_change, total_p_change * money_per_code / 100]
+    code = row['code']
+    free_market_cap = f"{round(row['free_market_cap'], 1)}亿"
+    volume = f"{round(row['volume'], 1)}万"
+    
+    stock_return = utils.get_stock_earnings(symbol=code, date=select_date, count=earnings_days) * 100
+    market_return = utils.get_stock_index_earnings(symbol='000300', date=select_date, count=earnings_days) * 100
 
-def selectDiaoMaoStock(date: str = datetime.date.today()):
-  pre_day = utils.get_previous_trading_date((pd.to_datetime(date) - datetime.timedelta(days = 1)).strftime('%Y-%m-%d'), include_this_day=True)
-  df = algo(pre_day, select_can_buy=False)
+    # volumeChange = utils.getStockVolumeChange(code=code, date=select_date)
+    # print(f"{code} {volumeChange['dates']} 成交量变化： {volumeChange['volume_change']}")
+
+    volume_radio = utils.getStockVolumeRadio(code, date=select_date)
+  
+    new_row = {
+      'code': row['code'],
+      'close': row['close'],
+      'free_market_cap': free_market_cap,
+      'volume_radio': volume_radio,
+      'volume': volume,
+      'stock_return': stock_return,
+      'market_return': market_return,
+      'select_date': row['select_date'],
+      'buy_date': row['buy_date'],
+      'next_open': row['next_open'],
+    }
+    new_df.loc[len(new_df)] = new_row
+  return new_df
+
+def selectDiaoMaoStock1(select_date: str, pre_select = False):
+  select_date = utils.get_previous_trading_date(select_date, include_this_day=True)
+  df = utils.getDiaoMaoStock(date=select_date, pre_select=pre_select, min_market_cap = 150)
+  df = filter(df)
+  df = addExtraInfo(df, select_date=select_date)
+
   if(len(df)):
     df['can_buy_price'] = df['close'] * 1.03
   
   print(df)
 
-# 收盘预选第二天
-def preSelect(date: str):
-  df = utils.getDiaoMaoStockPreSelect(date)
-  df['can_buy_price'] = df['close'] * 1.03
+def selectDiaoMaoStock2(select_date: str, pre_select = False):
+  select_date = utils.get_previous_trading_date(select_date, include_this_day=True)
+  df = utils.getDiaoMaoStock(date=select_date, pre_select=pre_select, min_market_cap = 20, max_market_cap = 30)
   df = filter(df)
+  df = addExtraInfo(df, select_date=select_date)
+
+  if(len(df)):
+    df['can_buy_price'] = df['close'] * 1.03
+  
   print(df)
 
+def selectDiaoMaoStock3(select_date: str, pre_select = False):
+  select_date = utils.get_previous_trading_date(select_date, include_this_day=True)
+  df = utils.getDiaoMaoStock(date=select_date, pre_select=pre_select, min_market_cap = 30, max_market_cap = 40)
+  df = filter(df)
+  df = addExtraInfo(df, select_date=select_date)
 
-# >200亿 每日固定1万, 持有3天
-#   2020年：2483.1
-#   2021年：50.6
-#   2022年: 7546.4
-#   2023年: -1235.7
-#   2024年: 9666.0
+  if(len(df)):
+    df['can_buy_price'] = df['close'] * 1.03
+  
+  print(df)
 
-# >100亿 每日固定1万, 持有3天
-#   2020年： -127.7
-#   2021年: 5805.9
-#   2022年: -600.5
-#   2023年: -1016.7
-#   2024年: 10960.6
-
-# <100亿 每日固定1万, 持有3天
-#   2020年: -4782.8
-#   2021年: 15190.5
-#   2022年: -5181.9
-#   2023年: 10172.69
-#   2024年: 4417.8
-
-# >200亿 每日每只股票1万， 持有3天
-#   2020年: 5052.0
-#   2021年: 175.0
-#   2022年: 8789.0
-#   2023年: -3238.0
-#   2024年: 10563.0
-
-# >100亿 每日每只股票1万， 持有3天
-#   2020年: 9316.0
-#   2021年: -5259.0
-#   2022年: 561.0
-#   2023年: -4909.0
-#   2024年: 24470.0
-
-# <100亿 每日每只股票1万
-#   2020年： -4853.0
-#   2021年： 31935.0
-#   2022年： 536.0
-#   2023年： 7703.0
-#   2024年： 118712.0

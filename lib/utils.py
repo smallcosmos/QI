@@ -151,7 +151,7 @@ def get_stock_earnings(symbol: str = None, date: str = None, count: int = 2):
     return 0
 
   end_date = pd.to_datetime(date).date().strftime('%Y-%m-%d')
-  start_date = get_previous_trading_date((pd.to_datetime(date) - datetime.timedelta(days = count)).strftime('%Y-%m-%d'))
+  start_date = get_previous_trading_date((pd.to_datetime(date) - datetime.timedelta(days = count)).strftime('%Y-%m-%d'), include_this_day=True)
   sql = f"select close from stock_hist where code = '{symbol}' and date = '{start_date}'"
   cur.execute(sql)
   results = cur.fetchall()
@@ -495,76 +495,121 @@ def get_small_stock(date: str):
 def getStockUpThan3(date: str):
   return []
 
+# 获取大盘近N日涨跌幅
+def getStockIndexChange(date: str, days: int = 3):
+  cur, conn = common.connect_db()
+  end_date = get_previous_trading_date(date, include_this_day=True)
+  during_dates = get_previous_trading_date(end_date, days=days) 
+  start_date =  during_dates[len(during_dates) - 1]
+  sql = f"SELECT code, date, p_change FROM stock.stock_index_hist \
+  WHERE date >= '{start_date}' and date <= '{end_date}' \
+  AND (code = '000001' OR code = '399001') order by date"
+  cur.execute(sql)
+  results = cur.fetchall()
+  df = pd.DataFrame(results, columns=['code', 'date', 'p_change'])
+
+  shang_index = ''
+  shen_index = ''
+  for index, row in df.iterrows():
+    if row['code'] == '000001':
+      shang_index += f"{row['p_change']}, "
+    else:
+      shen_index += f"{row['p_change']}, "
+  
+  dates = f"{start_date} ~ {end_date}"
+  return { 'df': df, 'dates': dates, 'shang_index': shang_index, 'shen_index': shen_index }
+
+# 获取股票近N日成交量
+def getStockVolumeChange(code: str, date: str, days: int = 3):
+  cur, conn = common.connect_db()
+  end_date = get_previous_trading_date(date, include_this_day=True)
+  during_dates = get_previous_trading_date(end_date, days=days) 
+  start_date =  during_dates[len(during_dates) - 1]
+  sql = f"SELECT code, date, volume FROM stock.stock_hist \
+  WHERE date >= '{start_date}' and date <= '{end_date}' \
+  AND code = {code} order by date"
+  cur.execute(sql)
+  results = cur.fetchall()
+  df = pd.DataFrame(results, columns=['code', 'date', 'volume'])
+  df['volume'] = df['volume'] / 10000
+
+  volume_change = ''
+  for index, row in df.iterrows():
+    volume_change += f"{round(row['volume'], 1)}万, "
+  
+  dates = f"{start_date} ~ {end_date}"
+  return { 'df': df, 'dates': dates, 'volume_change': volume_change }
+
+# 计算股票量比
+def getStockVolumeRadio(code: str, date: str):
+  cur, conn = common.connect_db()
+  end_date = get_previous_trading_date(date, include_this_day=True)
+  during_dates = get_previous_trading_date(end_date, days=5) 
+  start_date =  during_dates[len(during_dates) - 1]
+  sql = f"SELECT code, date, volume FROM stock.stock_hist \
+  WHERE date >= '{start_date}' and date <= '{end_date}' \
+  AND code = {code} order by date"
+  cur.execute(sql)
+  results = cur.fetchall()
+  df = pd.DataFrame(results, columns=['code', 'date', 'volume'])
+ 
+  total_pre_5_volume = 0
+  current_volume = 0
+  if len(df) != 6:
+    return 1
+
+  for index, row in df.iterrows():
+    if index != len(df) -1:
+      total_pre_5_volume += row['volume']
+    else: 
+      current_volume = row['volume']
+
+  return round(current_volume / (total_pre_5_volume / 5) , 2)
+
+
 # 涨幅3～5%， 且市值>1亿【优先选市值>100亿，重点选市值>200亿】, 换手5～15， 第二天开盘涨幅1～3, 且触碰3%
-def getDiaoMaoStock(date: str, select_can_buy: bool = True):
+def getDiaoMaoStock(date: str, pre_select: bool = False, min_market_cap: int = -1, max_market_cap: int = -1, next_up_p_change: int = 1):
   cur, conn = common.connect_db()
   if date is None:
     date = datetime.date.today()
 
-  date = get_next_trading_date(date, include_this_day=True)
-  next_date = get_next_trading_date(date)
-  pre_date = get_previous_trading_date(date)
-  next_p_change_than_3_condition = f"AND ((nd.next_high - v.close) / v.close) * 100 > 3" if select_can_buy else ''
+  select_date = get_previous_trading_date(date, include_this_day=True)
+  buy_date = get_next_trading_date(date)
+
+  next_up_p_change_condition = '' if pre_select else f"AND ((nd.next_high - v.close) / v.close) * 100 - ((nd.next_open - v.close) / v.close) * 100 > {next_up_p_change}"
+  next_open_condition = '' if pre_select else f" \
+    AND ((nd.next_open - v.close) / v.close) * 100 > 1 \
+    AND ((nd.next_open - v.close) / v.close) * 100 < 2"
+
+  min_market_cap_condition = f"AND v.free_market_cap > {min_market_cap * 100000000}" if min_market_cap != -1 else ''
+  max_market_cap_condition = f"AND v.free_market_cap < {max_market_cap * 100000000}" if max_market_cap != -1 else ''
+
+  
+
   sql = f"WITH next_day AS ( \
     SELECT h.code, h.date AS next_date, h.high AS next_high, h.open AS next_open \
     FROM stock.stock_hist h \
-    WHERE h.date = '{next_date}' \
-  ), \
-  pre_1_day AS ( \
-    SELECT p1.code, p1.p_change AS p1_change \
-    FROM stock.stock_hist p1 \
-    WHERE p1.date = '{pre_date}' \
+    WHERE h.date = '{buy_date}' \
   ) \
-  SELECT v.code, v.close, v.free_market_cap, nd.next_date \
-  FROM stock.stock_valuation v \
-  JOIN stock.stock_hist h ON v.code = h.code AND v.date = h.date \
-  JOIN next_day nd ON h.code = nd.code \
-  WHERE v.free_market_cap > 100 * 100000000 \
-    AND v.date = '{date}' \
+  SELECT h.code, h.close, v.free_market_cap, h.volume, h.date, nd.next_date, nd.next_open \
+  FROM stock.stock_hist h \
+  LEFT JOIN stock.stock_valuation v ON v.code = h.code AND v.date = h.date \
+  LEFT JOIN next_day nd ON h.code = nd.code \
+  WHERE h.date = '{select_date}' \
     AND h.p_change > 3 \
     AND h.p_change < 5 \
     AND h.turnover > 5 \
     AND h.turnover < 15 \
-    AND ((nd.next_open - v.close) / v.close) * 100 > 1 \
-    AND ((nd.next_open - v.close) / v.close) * 100 < 3 \
-    {next_p_change_than_3_condition} \
+    {min_market_cap_condition} \
+    {max_market_cap_condition} \
+    {next_open_condition} \
+    {next_up_p_change_condition} \
   "
   cur.execute(sql)
   results = cur.fetchall()
 
-  df = pd.DataFrame(results, columns=['code', 'close', 'free_market_cap', 'date'])
-  df['free_market_cap'] = df['free_market_cap'] / 100000000
-
-  return df
-
-# 预选： 涨幅3～5%， 且市值>1亿【优先选市值>100亿，重点选市值>200亿】, 换手5～15
-def getDiaoMaoStockPreSelect(date: str):
-  cur, conn = common.connect_db()
-  if date is None:
-    date = datetime.date.today()
-
-  date = get_next_trading_date(date, include_this_day=True)
-  next_date = get_next_trading_date(date)
-  pre_date = get_previous_trading_date(date)
-  sql = f"WITH pre_1_day AS ( \
-    SELECT p1.code, p1.p_change AS p1_change \
-    FROM stock.stock_hist p1 \
-    WHERE p1.date = '{pre_date}' \
-  ) \
-  SELECT v.code, v.close, v.free_market_cap \
-  FROM stock.stock_valuation v \
-  JOIN stock.stock_hist h ON v.code = h.code AND v.date = h.date \
-  WHERE v.free_market_cap > 1 * 100000000 \
-    AND v.date = '{date}' \
-    AND h.p_change > 3 \
-    AND h.p_change < 5 \
-    AND h.turnover > 5 \
-    AND h.turnover < 15 \
-  "
-  cur.execute(sql)
-  results = cur.fetchall()
-
-  df = pd.DataFrame(results, columns=['code', 'close', 'free_market_cap'])
+  df = pd.DataFrame(results, columns=['code', 'close', 'free_market_cap', 'volume', 'select_date', 'buy_date', 'next_open'])
+  df['volume'] = df['volume'] / 10000
   df['free_market_cap'] = df['free_market_cap'] / 100000000
 
   return df
