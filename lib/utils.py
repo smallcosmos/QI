@@ -145,7 +145,7 @@ def get_index_p_change(symbol: str, date: str):
   return p_change
 
 # 获取股票收益率 close[-1] / close[0] - 1
-def get_stock_earnings(symbol: str = None, date: str = None, count: int = 2):
+def get_stock_earnings(symbol: str = None, date: str = None, count = 2):
   cur, conn = common.connect_db()
   if symbol is None or date is None:
     return 0
@@ -333,6 +333,30 @@ def get_stock_p_change_next_N(symbol: str, date: str, count_bench: int = 10):
   df = pd.DataFrame(results, columns=['code', 'date', 'p_change'])
   return df
 
+# 获取未来N天的开盘涨跌幅 ‘2024-01-04’。4.   (preclose - open ) / preclose
+def get_stock_open_p_change_next_N(symbol: str, date: str, count_bench: int = 10):
+  cur, conn = common.connect_db()
+  trading_date = get_next_trading_date(date, include_this_day=True)
+  trading_days = get_next_trading_date(date=date, include_this_day=True, days = count_bench + 1)
+  max_trading_date = trading_days.iloc[-1]
+  sql = f"SELECT date, open, close FROM stock_hist where date <= '{max_trading_date}' and code = '{symbol}' order by date desc limit {count_bench + 2}"
+  cur.execute(sql)
+  results = cur.fetchall()
+  columns = ['date', 'open', 'close']
+  df = pd.DataFrame(results, columns=columns)
+  new_df = pd.DataFrame(columns=[f"date", "open", f"close", 'open_p_change', 'next_open_p_change'])
+  for index, row in df.iterrows():
+    if index > 0 and index < len(df) - 1:
+      pre_close = df.at[index+1, 'close']
+      open = row['open']
+      close = row['close']
+      next_open = df.at[index-1, 'open']
+      open_p_change = round(((open - pre_close) / pre_close) * 100, 2)
+      next_open_p_change = round(((next_open - close) / close * 100), 2)
+      new_df.loc[len(new_df)] = [row['date'], open, row['close'], open_p_change, next_open_p_change]
+  
+  new_df = new_df.sort_values('date', ascending=True)
+  return new_df
 
 def _custom_check_sequent_down(data):
   # """
@@ -516,8 +540,10 @@ def getStockIndexChange(date: str, days: int = 3):
     else:
       shen_index += f"{row['p_change']}, "
   
+  shang_df = df[df['code'] == '000001']
+  shen_df = df[df['code'] == '399001']
   dates = f"{start_date} ~ {end_date}"
-  return { 'df': df, 'dates': dates, 'shang_index': shang_index, 'shen_index': shen_index }
+  return { 'df': df, 'dates': dates, 'shang_index': shang_index, 'shen_index': shen_index, 'shang_df': shang_df, 'shen_df': shen_df }
 
 # 获取股票近N日成交量
 def getStockVolumeChange(code: str, date: str, days: int = 3):
@@ -566,9 +592,35 @@ def getStockVolumeRadio(code: str, date: str):
 
   return round(current_volume / (total_pre_5_volume / 5) , 2)
 
+#  指定日期，上阴线幅度
+def get_yinxiaxian_next_n(date: str, code: str, n = 2):
+  cur, conn = common.connect_db()
+  start_date = get_next_trading_date(date, include_this_day=True)
+  trading_days = get_next_trading_date(date=date, include_this_day=True, days = n)
+  max_trading_date = trading_days.iloc[-1]
+  sql = f"select code, date, high, low, open, close, p_change from stock.stock_hist where code = '{code}' and date >= '{start_date}' and date <= '{max_trading_date}'"
+  cur.execute(sql)
+  results = cur.fetchall()
+  
+  df = pd.DataFrame(results, columns=['code', 'date', 'high', 'low', 'open', 'close', 'p_change'])
+
+  df['yinyang'] = np.where(df['p_change'] > 0, 1, 0)
+  df['shang_xian'] = np.where(df['yinyang'] == 1, round((df['high'] - df['close']) / ( df['high'] - df['low'] ) * 100, 2), round((df['high'] - df['open']) / ( df['high'] - df['low'] ) * 100, 2))
+  df['xia_xian'] = np.where(df['yinyang'] == 1, round((df['open'] - df['low']) / ( df['high'] - df['low'] ) * 100, 2), round((df['close'] - df['low']) / ( df['high'] - df['low'] ) * 100, 2))
+  return df
+
+
+__beforen_9_30_select__=False
+def set_xuangu_condition():
+  global __beforen_9_30_select__
+  __beforen_9_30_select__ = True
+
+def reset_xuangu_condition():
+  global __beforen_9_30_select__
+  __beforen_9_30_select__ = False
 
 # 涨幅3～5%， 且市值>1亿【优先选市值>100亿，重点选市值>200亿】, 换手5～15， 第二天开盘涨幅1～3, 且触碰3%
-def getDiaoMaoStock(date: str, pre_select: bool = False, min_market_cap: int = -1, max_market_cap: int = -1, next_up_p_change: int = 1):
+def getDiaoMaoStock(date: str, pre_select: bool = False, min_market_cap = -1, max_market_cap = -1, min_next_open=1, max_next_open = 2, next_up_p_change = 1):
   cur, conn = common.connect_db()
   if date is None:
     date = datetime.date.today()
@@ -576,15 +628,15 @@ def getDiaoMaoStock(date: str, pre_select: bool = False, min_market_cap: int = -
   select_date = get_previous_trading_date(date, include_this_day=True)
   buy_date = get_next_trading_date(date)
 
+  global __beforen_9_30_select__
   next_up_p_change_condition = '' if pre_select else f"AND ((nd.next_high - v.close) / v.close) * 100 - ((nd.next_open - v.close) / v.close) * 100 > {next_up_p_change}"
+  next_up_p_change_condition = '' if __beforen_9_30_select__ else next_up_p_change_condition
   next_open_condition = '' if pre_select else f" \
-    AND ((nd.next_open - v.close) / v.close) * 100 > 1 \
-    AND ((nd.next_open - v.close) / v.close) * 100 < 2"
+    AND ((nd.next_open - v.close) / v.close) * 100 > {min_next_open} \
+    AND ((nd.next_open - v.close) / v.close) * 100 < {max_next_open}"
 
   min_market_cap_condition = f"AND v.free_market_cap > {min_market_cap * 100000000}" if min_market_cap != -1 else ''
   max_market_cap_condition = f"AND v.free_market_cap < {max_market_cap * 100000000}" if max_market_cap != -1 else ''
-
-  
 
   sql = f"WITH next_day AS ( \
     SELECT h.code, h.date AS next_date, h.high AS next_high, h.open AS next_open \

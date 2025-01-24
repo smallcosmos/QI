@@ -48,31 +48,44 @@ def periodTask(start_date = None, end_date = None, start_code = None):
   stock.update_stock_index_hist_period(start_date=start_date, end_date=end_date)
 
 # 开盘 9:30 选当日股
-def xuangu():
+def xuangu(update_hist=True, filter_by_return=False):
+  utils.set_xuangu_condition()
   # 更新股票当日行情, 获取开盘价
-  stock.update_stock_hist_today()
+  if update_hist:
+    stock.update_stock_hist_today()
   
   # 取前一个交易日
   select_date = utils.get_previous_trading_date(datetime.date.today())
   # diaomao策略
-  diaomao.selectDiaoMaoStock1(select_date=select_date)
-  diaomao.selectDiaoMaoStock2(select_date=select_date)
-  diaomao.selectDiaoMaoStock3(select_date=select_date)
+  df1 = diaomao.selectDiaoMaoStock1_1(select_date=select_date, filter_by_return=filter_by_return)
+  df1_2 = diaomao.selectDiaoMaoStock1_2(select_date=select_date, filter_by_return=filter_by_return)
+  df4 = diaomao.selectDiaoMaoStock4_1(select_date=select_date, filter_by_return=filter_by_return)
+  df2_2 = diaomao.selectDiaoMaoStock2_2(select_date=select_date, filter_by_return=filter_by_return)
+  df2_3 = diaomao.selectDiaoMaoStock2_3(select_date=select_date, filter_by_return=filter_by_return)
+  utils.reset_xuangu_condition()
+  print(df1, df1_2, df4, df2_2, df2_3)
 
-def pre_xuanfu(select_date: str):
-  diaomao.selectDiaoMaoStock1(select_date=select_date, pre_select=True)
-  diaomao.selectDiaoMaoStock2(select_date=select_date, pre_select=True)
-  diaomao.selectDiaoMaoStock3(select_date=select_date, pre_select=True)
+def pre_xuangu(select_date: str, filter_by_return=True):
+  df1 = diaomao.selectDiaoMaoStock1_1(select_date=select_date, pre_select=True, filter_by_return=filter_by_return)
+  df4 = diaomao.selectDiaoMaoStock4_1(select_date=select_date, pre_select=True, filter_by_return=filter_by_return)
+  df2 = diaomao.selectDiaoMaoStock2_2(select_date=select_date, pre_select=True, filter_by_return=filter_by_return)
 
-# diaomao.selectDiaoMaoStock1('2025-01-08')
+  df = pd.concat([df1, df4, df2])
+  print(df)
+  # for index, row in df.iterrows():
+  #   line_df = utils.get_yinxiaxian_next_n(select_date, row['code']);
+  #   print(line_df)
+
+
 # dailyTask()
 
 # common.close_db()
 
-# diaomao.test_15_days('2025-01-02', 2, with_dynamic=True)
-# diaomao.test_30_days('2025-01-07', 2, with_dynamic=True)
-diaomao.test_by_year('2020', 2, with_dynamic=True, all_type=False)
+diaomao.test_by_year('2025', 2, all_type=True, filter_by_return=True)
 
 
-# xuangu()
-# pre_xuanfu('2025-01-09')
+# xuangu(update_hist=True, filter_by_return=True)
+# xuangu(update_hist=False, filter_by_return=False)
+# pre_xuangu('2025-01-23', filter_by_return=False)
+
+# diaomao.auto_run_ai()
